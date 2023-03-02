@@ -7,6 +7,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 import csv
+import enum
+
+
+class CategoryEnum(enum.Enum):
+    PROVINSI = "PROVINSI"
+    KABUPATEN_KOTA = "KABUPATEN/KOTA"
+    LUAR_NEGERI = "LUAR_NEGERI"
+    PPLN = "PPLN"
 
 
 class Scraper:
@@ -63,7 +71,20 @@ class Scraper:
                 )
             )
 
-            record_entry = [province_name, vote_jokowi_number, vote_prabowo_number]
+            category = CategoryEnum.PROVINSI.value
+            is_foreign = False
+
+            if province_name == "+Luar Negeri":
+                category = CategoryEnum.LUAR_NEGERI.value
+                is_foreign = True
+
+            record_entry = [
+                province_name,
+                vote_jokowi_number,
+                vote_prabowo_number,
+                category,
+            ]
+
             self.records.append(record_entry)
 
             wait.until(EC.element_to_be_clickable(province)).click()
@@ -78,10 +99,10 @@ class Scraper:
                 By.XPATH,
                 '//*[@id="app"]/div[2]/div[1]/div[2]/section/div/div[4]/div/div[2]/table/tbody/tr',
             )
-            self.scrape_cities(len(tabel_prov_kiri), 1)
-            self.scrape_cities(len(tabel_prov_kanan), 2)
+            self.scrape_cities(len(tabel_prov_kiri), 1, is_foreign)
+            self.scrape_cities(len(tabel_prov_kanan), 2, is_foreign)
 
-    def scrape_cities(self, row_count, table_number):
+    def scrape_cities(self, row_count, table_number, is_foreign):
         for counter in range(row_count):
             record_entry = []
 
@@ -122,7 +143,18 @@ class Scraper:
                 )
             )
 
-            record_entry = [city_name, vote_jokowi_number, vote_prabowo_number]
+            category = CategoryEnum.KABUPATEN_KOTA.value
+
+            if is_foreign == True:
+                category = CategoryEnum.PPLN.value
+
+            record_entry = [
+                city_name,
+                vote_jokowi_number,
+                vote_prabowo_number,
+                category,
+            ]
+
             self.records.append(record_entry)
 
     def print_values(self):
@@ -151,8 +183,8 @@ if __name__ == "__main__":
     scraper_table_1.print_values()
 
     all_records = scraper_table_1.get_all_records()
-    with open("data.csv", "w", encoding="UTF8") as file:
-        header = ["daerah", "jokowi", "prabowo"]
+    with open("scraping_v3.csv", "w", encoding="UTF8") as file:
+        header = ["daerah", "vote_jokowi", "vote_prabowo", "kategori"]
         writer = csv.writer(file)
         writer.writerow(header)
         writer.writerows(all_records)
